@@ -3,6 +3,7 @@
  * @module plotty
  * @name plotty
  * @author: Daniel Santillan
+ * @web-worker port: MaxPower aka Joan Carazp
  */
 
 /**
@@ -86,9 +87,9 @@ function createDataset(gl, id, data, width, height) {
 
     // Upload the image into the texture.
     gl.texImage2D(gl.TEXTURE_2D, 0,
-      gl.LUMINANCE,
-      width, height, 0,
-      gl.LUMINANCE, gl.FLOAT, new Float32Array(data)
+        gl.LUMINANCE,
+        width, height, 0,
+        gl.LUMINANCE, gl.FLOAT, new Float32Array(data)
     );
   }
   return { textureData, width, height, data, id };
@@ -243,7 +244,7 @@ class plot {
     if (defaultFor(options.useWebGL, true)) {
       // Try to create a webgl context in a temporary canvas to see if webgl and
       // required OES_texture_float is supported
-      if (create3DContext(document.createElement('canvas'), {premultipliedAlpha: false}) !== null) {
+      if (create3DContext(new OffscreenCanvas(1, 1), {premultipliedAlpha: false}) !== null) {
         const gl = create3DContext(this.canvas, {premultipliedAlpha: false});
         this.gl = gl;
         this.program = createProgram(gl, vertexShaderSource, fragmentShaderSource);
@@ -286,9 +287,9 @@ class plot {
     if (options.data) {
       const l = options.data.length;
       this.setData(
-        options.data,
-        defaultFor(options.width, options.data[l - 2]),
-        defaultFor(options.height, options.data[l - 2])
+          options.data,
+          defaultFor(options.width, options.data[l - 2]),
+          defaultFor(options.height, options.data[l - 2])
       );
     }
 
@@ -426,7 +427,7 @@ class plot {
    * @param {HTMLCanvasElement} [canvas] the canvas element to render to.
    */
   setCanvas(canvas) {
-    this.canvas = canvas || document.createElement('canvas');
+    this.canvas = canvas || new OffscreenCanvas(1, 1);
   }
 
   /**
@@ -472,7 +473,7 @@ class plot {
     }
     if (!this.colorScaleCanvas) {
       // Create single canvas to render colorscales
-      this.colorScaleCanvas = document.createElement('canvas');
+      this.colorScaleCanvas = new OffscreenCanvas(256, 1);
       this.colorScaleCanvas.width = 256;
       this.colorScaleCanvas.height = 1;
     }
@@ -667,10 +668,10 @@ ${ids.map(id => `          float ${id}_value = texture2D(u_texture_${id}, v_texC
       const positionLocation = gl.getAttribLocation(program, 'a_position');
       const domainLocation = gl.getUniformLocation(program, 'u_domain');
       const displayRangeLocation = gl.getUniformLocation(
-        program, 'u_display_range'
+          program, 'u_display_range'
       );
       const applyDisplayRangeLocation = gl.getUniformLocation(
-        program, 'u_apply_display_range'
+          program, 'u_apply_display_range'
       );
       const resolutionLocation = gl.getUniformLocation(program, 'u_resolution');
       const noDataValueLocation = gl.getUniformLocation(program, 'u_noDataValue');
@@ -732,7 +733,7 @@ ${ids.map(id => `          float ${id}_value = texture2D(u_texture_${id}, v_texC
           if (data[i] === this.noDataValue || data[i] !== data[i]) {
             alpha = 0;
           } else if (this.applyDisplayRange
-            && (data[i] < this.displayRange[0] || data[i] >= this.displayRange[1])) {
+              && (data[i] < this.displayRange[0] || data[i] >= this.displayRange[1])) {
             alpha = 0;
           }
 
@@ -765,7 +766,7 @@ ${ids.map(id => `          float ${id}_value = texture2D(u_texture_${id}, v_texC
   getColor(val) {
     const steps = this.colorScaleCanvas.width;
     const csImageData = this.colorScaleCanvas.getContext('2d')
-                                             .getImageData(0, 0, steps, 1).data;
+        .getImageData(0, 0, steps, 1).data;
     const trange = this.domain[1] - this.domain[0];
     let c = Math.round(((val - this.domain[0]) / trange) * steps);
     let alpha = 255;
